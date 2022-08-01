@@ -2,7 +2,7 @@ const express = require('express');
 const router = new express.Router();
 const Task = require('../models/task');
 const auth = require('../middleware/auth');
-
+const { sortSchema, completedSchema, limitSchema, skipSchema } = require('../models/validator');
 router.post('/tasks', auth, async (req, res) => {
   try {
     // // const task = new Task(req.body);
@@ -21,16 +21,25 @@ router.get('/tasks', auth, async (req, res) => {
   //! Works fine, be we want to use .populate()
   // const tasks = await Task.find({ owner: req.user._id });
   // // await req.user.populate('tasks');
-  const match = {};
-  const sort = {};
-  if (req.query.completed) {
-    match.completed = req.query.completed === 'true';
-  }
-  if (req.query.sortBy) {
-    const parts = req.query.sortBy.split('_');
-    sort[parts[0]] = parts[1] === 'desc' ? -1 : 1;
-  }
   try {
+    const match = {};
+    const sort = {};
+    if (req.query.completed) {
+      await completedSchema.validateAsync({ completed: req.query.completed });
+      match.completed = req.query.completed === 'true';
+    }
+    if (req.query.sortBy) {
+      const parts = req.query.sortBy.split('_');
+      const [sortBy, sortType] = parts;
+      await sortSchema.validateAsync({ sortBy, sortType });
+      sort[parts[0]] = parts[1] === 'desc' ? -1 : 1;
+    }
+    if (req.query.limit) {
+      await limitSchema.validateAsync({ limit: req.query.limit });
+    }
+    if (req.query.skip) {
+      await skipSchema.validateAsync({ skip: req.query.skip });
+    }
     await req.user.populate({
       path: 'tasks',
       match,
@@ -46,7 +55,7 @@ router.get('/tasks', auth, async (req, res) => {
     if (!tasks) return res.status(404).send();
     res.send(tasks);
   } catch (err) {
-    res.status(500).send();
+    res.status(500).send(err);
   }
 });
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = new express.Router();
 const User = require('../models/user');
+const { userSchema } = require('../models/user');
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const sharp = require('sharp');
@@ -8,6 +9,7 @@ const { sendWelcomeEmail, cancelationEmail } = require('../emails/accounts');
 //! Sign Up
 router.post('/users', async (req, res) => {
   const user = new User(req.body);
+  console.log(user);
   try {
     await user.save();
     sendWelcomeEmail(user.name, user.email);
